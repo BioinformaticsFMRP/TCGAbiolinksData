@@ -8,3 +8,4 @@ data/dataDEGsFiltLevel.rda filter=lfs diff=lfs merge=lfs -text
 data/datalist filter=lfs diff=lfs merge=lfs -text
 data/geneInfoHT.rda filter=lfs diff=lfs merge=lfs -text
 data/BRCA_rnaseqv2.rda filter=lfs diff=lfs merge=lfs -text
+data/case2.rda filter=lfs diff=lfs merge=lfs -text

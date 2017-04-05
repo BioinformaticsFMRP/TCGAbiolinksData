@@ -5,7 +5,7 @@ author: Tiago C. Silva, Antonio Colaprico, Catharina Olsen, Fulvio D’Angelo, G
 date: "`r Sys.Date()`"
 output:  BiocStyle::html_document
 vignette: >
-  %\VignetteIndexEntry{'Example data for TCGA Workflow: Analyze cancer genomics and epigenomics data using Bioconductor packages'}
+  %\VignetteIndexEntry{'Data for TCGAbiolinks Package'}
   %\VignetteEngine{knitr::rmarkdown}
   %\VignetteEncoding{UTF-8}
 ---
@@ -15,11 +15,91 @@ vignette: >
 This package provides all necessary data to run and compile TCGAbiolinks package.
 
 # Loading the data
+```{r,eval=FALSE,echo=TRUE,message=FALSE,warning=FALSE}
+library(TCGAbiolinksData)
+data(case2)
+data(case3)
+```
 
 # Data Creation
 
+## Case study n. 1: Pan Cancer downstream analysis BRCA
+```{r,eval=FALSE,echo=TRUE,message=FALSE,warning=FALSE}
+library(SummarizedExperiment)
+library(TCGAbiolinks)
+query.exp <- GDCquery(project = "TCGA-BRCA", 
+                      legacy = TRUE,
+                      data.category = "Gene expression",
+                      data.type = "Gene expression quantification",
+                      platform = "Illumina HiSeq", 
+                      file.type = "results",
+                      experimental.strategy = "RNA-Seq",
+                      sample.type = c("Primary solid Tumor","Solid Tissue Normal"))
+GDCdownload(query.exp)
+brca.exp <- GDCprepare(query = query.ex)
+
+# get subtype information
+dataSubt <- TCGAquery_subtype(tumor = "BRCA")
+
+# get clinical data
+dataClin <- GDCquery_clinic(project = "TCGA-BRCA","clinical") 
+
+# Which samples are primary solid tumor
+dataSmTP <- TCGAquery_SampleTypes(getResults(query.exp,cols = "cases"),"TP") 
+# which samples are solid tissue normal 
+dataSmNT <- TCGAquery_SampleTypes(getResults(query.exp,cols = "cases"),"NT")
+```
+
+Using `TCGAnalyze_DEA`, we identified 3,390 differentially expression genes (DEG) (log 
+fold change >=1 and FDR < 1%) between 114 normal and 1097 BRCA samples. In 
+order to understand the underlying biological process from DEGs we performed an 
+enrichment analysis using `TCGAnalyze_EA_complete` function.  
+
+```{r,eval=FALSE,echo=TRUE,message=FALSE,warning=FALSE}
+dataPrep <- TCGAanalyze_Preprocessing(object = brca.exp, cor.cut = 0.6)                      
+
+dataNorm <- TCGAanalyze_Normalization(tabDF = dataPrep,
+                                      geneInfo = geneInfo,
+                                      method = "gcContent")                
+
+dataFilt <- TCGAanalyze_Filtering(tabDF = dataNorm,
+                                  method = "quantile", 
+                                  qnt.cut =  0.25)   
+
+dataDEGs <- TCGAanalyze_DEA(mat1 = dataFilt[,dataSmNT],
+                            mat2 = dataFilt[,dataSmTP],
+                            Cond1type = "Normal",
+                            Cond2type = "Tumor",
+                            fdr.cut = 0.01 ,
+                            logFC.cut = 1,
+                            method = "glmLRT")  
+
+group1 <- TCGAquery_SampleTypes(colnames(dataFilt), typesample = c("NT"))
+group2 <- TCGAquery_SampleTypes(colnames(dataFilt), typesample = c("TP"))
+
+dataSurv <- TCGAanalyze_SurvivalKM(clinical_patient = dataClin,
+                                   dataGE = dataFilt,
+                                   Genelist = rownames(dataDEGs),
+                                   Survresult = FALSE,
+                                   ThreshTop = 0.67,
+                                   ThreshDown = 0.33,
+                                   p.cut = 0.05, group1, group2)
+library(dnet)  
+org.Hs.string <- dRDataLoader(RData = "org.Hs.string")
+TabCoxNet <- TCGAvisualize_SurvivalCoxNET(dataClin,
+                                          dataFilt, 
+                                          Genelist = rownames(dataSurv),
+                                          scoreConfidence = 700,
+                                          org.Hs.string = org.Hs.string,
+                                          titlePlot = "Case Study n.1 dnet")
+save(brca.exp,dataClin,dataSurv, file = "case1.rda", compress = "gz")
+```
+
 ## Case study n. 2: Pan Cancer downstream analysis LGG
-We focused on the analysis of LGG samples. In particular, we used TCGAbiolinks to download 293 samples with molecular subtypes. Link the complete complete code. .
+
+This case of study downlods low grade gliomas (LGG) Gene Expression Quantification data  aligned against GRCh38/hg38, performs
+clusterization algorithm, which result will be visualized thourgh a heatmap. Finally evaluate the correlation between the clustering
+and the survival of each group.
 
 ```{r,eval=FALSE,echo=TRUE,message=FALSE,warning=FALSE}
 library(TCGAbiolinks)
@@ -44,7 +124,7 @@ lgg.exp <- subset(lgg.exp, select = colData(lgg.exp)$patient %in% dataSubt$patie
 
 dataPrep <- TCGAanalyze_Preprocessing(object = lgg.exp,cor.cut = 0.6)
 dataNorm <- TCGAanalyze_Normalization(tabDF = dataPrep,
-                                      geneInfo = geneInfo,
+                                      geneInfo = geneInfoHT, # infor for hg38 data
                                       method = "gcContent")
 
 datFilt1 <- TCGAanalyze_Filtering(tabDF = dataNorm,method = "varFilter")
@@ -87,7 +167,7 @@ save(clin_subt,clin_subt_all, lgg.exp, LGGmut, datFilt,file = "case2.rda", compr
 
 ## Case study n. 3: Integration of methylation and expression for ACC
 
-In this case of study,  we downloaded both adrenal cortical carcinoma (ACC) DNA methylation data for HumanMethylation450k platform and Gene Expression Quantification data  aligned against hg38.
+In this case of study,  we downloaded both adrenal cortical carcinoma (ACC) DNA methylation data for HumanMethylation450k platform and Gene Expression Quantification data  aligned against GRCh38/hg38.
 
 Also, by default TCGAbiolinks adds subtypes already published by researchers.
 
