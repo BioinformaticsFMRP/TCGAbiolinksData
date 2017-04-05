@@ -15,10 +15,13 @@ vignette: >
 This package provides all necessary data to run and compile TCGAbiolinks package.
 
 # Loading the data
-```{r,eval=FALSE,echo=TRUE,message=FALSE,warning=FALSE}
+```{r, eval = FALSE, echo = TRUE, message = FALSE, warning = FALSE}
 library(TCGAbiolinksData)
-data(case2)
-data(case3)
+data("case1")
+data("case2")
+data("case3")
+data("geneInfoHT")
+data("geneInfo")
 ```
 
 # Data Creation
@@ -44,18 +47,12 @@ dataSubt <- TCGAquery_subtype(tumor = "BRCA")
 # get clinical data
 dataClin <- GDCquery_clinic(project = "TCGA-BRCA","clinical") 
 
-# Which samples are primary solid tumor
-dataSmTP <- TCGAquery_SampleTypes(getResults(query.exp,cols = "cases"),"TP") 
 # which samples are solid tissue normal 
-dataSmNT <- TCGAquery_SampleTypes(getResults(query.exp,cols = "cases"),"NT")
-```
+group1 <- TCGAquery_SampleTypes(colnames(dataFilt), typesample = c("NT"))
 
-Using `TCGAnalyze_DEA`, we identified 3,390 differentially expression genes (DEG) (log 
-fold change >=1 and FDR < 1%) between 114 normal and 1097 BRCA samples. In 
-order to understand the underlying biological process from DEGs we performed an 
-enrichment analysis using `TCGAnalyze_EA_complete` function.  
+# Which samples are primary solid tumor
+group2 <- TCGAquery_SampleTypes(colnames(dataFilt), typesample = c("TP"))
 
-```{r,eval=FALSE,echo=TRUE,message=FALSE,warning=FALSE}
 dataPrep <- TCGAanalyze_Preprocessing(object = brca.exp, cor.cut = 0.6)                      
 
 dataNorm <- TCGAanalyze_Normalization(tabDF = dataPrep,
@@ -66,16 +63,15 @@ dataFilt <- TCGAanalyze_Filtering(tabDF = dataNorm,
                                   method = "quantile", 
                                   qnt.cut =  0.25)   
 
-dataDEGs <- TCGAanalyze_DEA(mat1 = dataFilt[,dataSmNT],
-                            mat2 = dataFilt[,dataSmTP],
+dataDEGs <- TCGAanalyze_DEA(mat1 = dataFilt[,group1],
+                            mat2 = dataFilt[,group2],
                             Cond1type = "Normal",
                             Cond2type = "Tumor",
                             fdr.cut = 0.01 ,
                             logFC.cut = 1,
                             method = "glmLRT")  
 
-group1 <- TCGAquery_SampleTypes(colnames(dataFilt), typesample = c("NT"))
-group2 <- TCGAquery_SampleTypes(colnames(dataFilt), typesample = c("TP"))
+
 
 dataSurv <- TCGAanalyze_SurvivalKM(clinical_patient = dataClin,
                                    dataGE = dataFilt,
@@ -83,7 +79,9 @@ dataSurv <- TCGAanalyze_SurvivalKM(clinical_patient = dataClin,
                                    Survresult = FALSE,
                                    ThreshTop = 0.67,
                                    ThreshDown = 0.33,
-                                   p.cut = 0.05, group1, group2)
+                                   p.cut = 0.05, 
+                                   group1 = group1, 
+                                   group2 = group2)
 library(dnet)  
 org.Hs.string <- dRDataLoader(RData = "org.Hs.string")
 TabCoxNet <- TCGAvisualize_SurvivalCoxNET(dataClin,
@@ -92,7 +90,8 @@ TabCoxNet <- TCGAvisualize_SurvivalCoxNET(dataClin,
                                           scoreConfidence = 700,
                                           org.Hs.string = org.Hs.string,
                                           titlePlot = "Case Study n.1 dnet")
-save(brca.exp,dataClin,dataSurv, file = "case1.rda", compress = "gz")
+
+save(brca.exp,dataClin,dataSurv,TabCoxNet,dataSubt, group1, group2, file = "case1.rda", compress = "gz")
 ```
 
 ## Case study n. 2: Pan Cancer downstream analysis LGG
