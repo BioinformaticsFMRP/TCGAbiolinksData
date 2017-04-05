@@ -18,6 +18,73 @@ This package provides all necessary data to run and compile TCGAbiolinks package
 
 # Data Creation
 
+## Case study n. 2: Pan Cancer downstream analysis LGG
+We focused on the analysis of LGG samples. In particular, we used TCGAbiolinks to download 293 samples with molecular subtypes. Link the complete complete code. .
+
+```{r,eval=FALSE,echo=TRUE,message=FALSE,warning=FALSE}
+library(TCGAbiolinks)
+library(SummarizedExperiment)
+
+query.exp <- GDCquery(project = "TCGA-LGG", 
+                      data.category = "Transcriptome Profiling",
+                      data.type = "Gene Expression Quantification", 
+                      workflow.type = "HTSeq - Counts",
+                      sample.type = "Primary solid Tumor")
+GDCdownload(query.exp)
+lgg.exp <- GDCprepare(query = query.exp)
+
+# get subtype information
+dataSubt <- TCGAquery_subtype(tumor = "LGG")
+
+# get indexed clinical data
+dataClin <- GDCquery_clinic(project = "TCGA-LGG", "Clinical")
+
+# expression data with molecular subtypes
+lgg.exp <- subset(lgg.exp, select = colData(lgg.exp)$patient %in% dataSubt$patient)
+
+dataPrep <- TCGAanalyze_Preprocessing(object = lgg.exp,cor.cut = 0.6)
+dataNorm <- TCGAanalyze_Normalization(tabDF = dataPrep,
+                                      geneInfo = geneInfo,
+                                      method = "gcContent")
+
+datFilt1 <- TCGAanalyze_Filtering(tabDF = dataNorm,method = "varFilter")
+datFilt2 <- TCGAanalyze_Filtering(tabDF = datFilt1,method = "filter1")
+datFilt <- TCGAanalyze_Filtering(tabDF = datFilt2,method = "filter2")
+
+data_Hc1 <- TCGAanalyze_Clustering(tabDF = datFilt,
+                                   method = "hclust",
+                                   methodHC = "ward.D2")
+data_Hc2 <- TCGAanalyze_Clustering(tabDF = datFilt,
+                                   method = "consensus",
+                                   methodHC = "ward.D2")
+
+#------  Add cluster information
+cluster <- data.frame("groupsHC" = data_Hc2[[4]]$consensusClass)
+cluster$groupsHC <- paste0("EC",cluster$groupsHC)
+cluster$patient <-  substr(colData(lgg.exp)$patient,1,12)
+
+# Add information about gropus from consensus Cluster in clinical data
+dataClin <- merge(dataClin,cluster, by.x="bcr_patient_barcode", by.y="patient")
+
+# Merge subtype and clinical data
+clin_subt <- merge(dataClin,dataSubt, by.x="bcr_patient_barcode", by.y="patient")
+clin_subt_all <- merge(dataClin,dataSubt, 
+                       by.x="bcr_patient_barcode", by.y="patient", all.x = TRUE)
+
+LGGmut <- GDCquery_Maf(tumor = "LGG", pipelines = "muse")
+# Selecting gene
+mRNAsel <- "ATRX"
+LGGselected <- LGGmut[LGGmut$Hugo_Symbol == mRNAsel,]
+
+dataMut <- LGGselected[!duplicated(LGGselected$Tumor_Sample_Barcode),]
+dataMut$Tumor_Sample_Barcode <- substr(dataMut$Tumor_Sample_Barcode,1,12)
+
+# Adding the Expression Cluster classification found before
+dataMut <- merge(dataMut, cluster, by.y="patient", by.x="Tumor_Sample_Barcode")
+dataMut <- dataMut[dataMut$Variant_Classification!=0,]
+save(clin_subt,clin_subt_all, lgg.exp, LGGmut, datFilt,file = "case2.rda", compress = "xz")
+```
+
 ## Case study n. 3: Integration of methylation and expression for ACC
 
 In this case of study,  we downloaded both adrenal cortical carcinoma (ACC) DNA methylation data for HumanMethylation450k platform and Gene Expression Quantification data  aligned against hg38.
@@ -40,7 +107,7 @@ setwd("case3")
 query.met <- GDCquery(project = "TCGA-ACC", 
                       data.category = "DNA Methylation",
                       platform = "Illumina Human Methylation 450")
-GDCdownload(query.met)
+GDCdownload(query.met,chunks.per.download = 5)
 acc.met <- GDCprepare(query = query.met)
 
 #-----------------------------------
@@ -58,6 +125,9 @@ For DNA methylation, we perform a DMR (different methylated region) analysis,
 which will give the difference of DNA methylation for the probes of the groups and their significance value.
 
 ```{r,eval=FALSE,echo=TRUE,message=FALSE,warning=FALSE}
+# na.omit: remove probes with NAs
+acc.met <- subset(acc.met,subset = (rowSums(is.na(assay(acc.met))) == 0))
+
 # Volcano plot
 acc.met <- TCGAanalyze_DMR(acc.met, 
                            groupCol = "subtype_MethyLevel",
@@ -93,10 +163,10 @@ dataFilt <- TCGAanalyze_Filtering(tabDF = dataNorm,
                                   method='quantile')
 
 acc.dataDEGs <- TCGAanalyze_DEA(mat1 = dataFilt[,idx],
-                            mat2 = dataFilt[,idx2],
-                            Cond1type = "CIMP-high",
-                            Cond2type = "CIMP-low",
-                            method = "glmLRT")
+                                mat2 = dataFilt[,idx2],
+                                Cond1type = "CIMP-high",
+                                Cond2type = "CIMP-low",
+                                method = "glmLRT")
 
 save(acc.met, acc.exp, acc.dataDEGs, file = "case3.rda", compress = "xz")
 ```
