@@ -18,6 +18,88 @@ This package provides all necessary data to run and compile TCGAbiolinks package
 
 # Data Creation
 
+## Case study n. 3: Integration of methylation and expression for ACC
+
+In this case of study,  we downloaded both adrenal cortical carcinoma (ACC) DNA methylation data for HumanMethylation450k platform and Gene Expression Quantification data  aligned against hg38.
+
+Also, by default TCGAbiolinks adds subtypes already published by researchers.
+
+We selected two molecular subtypes CIMP-low and CIMP-high to perform an integrative analysis
+usng RNA expression and DNA methylation.
+
+```{r,eval=FALSE,echo=TRUE,message=FALSE,warning=FALSE}
+library(TCGAbiolinks)
+library(SummarizedExperiment)
+dir.create("case3")
+setwd("case3")
+#-----------------------------------
+# STEP 1: Search, download, prepare |
+#-----------------------------------
+# 1.1 - DNA methylation
+# ----------------------------------
+query.met <- GDCquery(project = "TCGA-ACC", 
+                      data.category = "DNA Methylation",
+                      platform = "Illumina Human Methylation 450")
+GDCdownload(query.met)
+acc.met <- GDCprepare(query = query.met)
+
+#-----------------------------------
+# 1.2 - RNA expression
+# ----------------------------------
+query.exp <- GDCquery(project = "TCGA-ACC", 
+                      data.category = "Transcriptome Profiling",
+                      data.type = "Gene Expression Quantification", 
+                      workflow.type = "HTSeq - Counts")
+GDCdownload(query.exp)
+acc.exp <- GDCprepare(query = query.exp)
+```
+
+For DNA methylation, we perform a DMR (different methylated region) analysis, 
+which will give the difference of DNA methylation for the probes of the groups and their significance value.
+
+```{r,eval=FALSE,echo=TRUE,message=FALSE,warning=FALSE}
+# Volcano plot
+acc.met <- TCGAanalyze_DMR(acc.met, 
+                           groupCol = "subtype_MethyLevel",
+                           group1 = "CIMP-high",
+                           group2 = "CIMP-low",
+                           p.cut = 10^-5,
+                           diffmean.cut = 0.25,
+                           legend = "State",
+                           plot.filename = "CIMP-highvsCIMP-low_metvolcano.png")
+```
+
+For the gene expression data, we perform a DEA (differential expression analysis) which will give the fold change 
+of gene expression and their significance value.
+
+```{r,eval=FALSE,echo=TRUE,message=FALSE,warning=FALSE}
+#-------------------------------------------------
+# 2.3 - DEA - Expression analysis - volcano plot
+# ------------------------------------------------
+acc.exp.aux <- subset(acc.exp, 
+                      select = colData(acc.exp)$subtype_MethyLevel %in% c("CIMP-high","CIMP-low"))
+
+idx <- colData(acc.exp.aux)$subtype_MethyLevel %in% c("CIMP-high")
+idx2 <- colData(acc.exp.aux)$subtype_MethyLevel %in% c("CIMP-low")
+
+dataPrep <- TCGAanalyze_Preprocessing(object = acc.exp.aux, cor.cut = 0.6)
+
+dataNorm <- TCGAanalyze_Normalization(tabDF = dataPrep,
+                                      geneInfo = geneInfoHT,
+                                      method = "gcContent")
+
+dataFilt <- TCGAanalyze_Filtering(tabDF = dataNorm,
+                                  qnt.cut = 0.25,
+                                  method='quantile')
+
+acc.dataDEGs <- TCGAanalyze_DEA(mat1 = dataFilt[,idx],
+                            mat2 = dataFilt[,idx2],
+                            Cond1type = "CIMP-high",
+                            Cond2type = "CIMP-low",
+                            method = "glmLRT")
+
+save(acc.met, acc.exp, acc.dataDEGs, file = "case3.rda", compress = "xz")
+```
 
 # Session info
 ```{r sessionInfo, results='asis', echo=FALSE}
