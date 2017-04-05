@@ -27,6 +27,10 @@ data("geneInfo")
 # Data Creation
 
 ## Case study n. 1: Pan Cancer downstream analysis BRCA
+
+This case of study downlods Breast Invasive Carcinoma (BRCA) Gene Expression Quantification data  aligned against GRCh37/hg19, performs
+DEA analysis, and correlation between it with the survival analysis.
+
 ```{r,eval=FALSE,echo=TRUE,message=FALSE,warning=FALSE}
 library(SummarizedExperiment)
 library(TCGAbiolinks)
@@ -39,7 +43,7 @@ query.exp <- GDCquery(project = "TCGA-BRCA",
                       experimental.strategy = "RNA-Seq",
                       sample.type = c("Primary solid Tumor","Solid Tissue Normal"))
 GDCdownload(query.exp)
-brca.exp <- GDCprepare(query = query.ex)
+brca.exp <- GDCprepare(query = query.exp)
 
 # get subtype information
 dataSubt <- TCGAquery_subtype(tumor = "BRCA")
@@ -93,6 +97,7 @@ TabCoxNet <- TCGAvisualize_SurvivalCoxNET(dataClin,
 
 save(brca.exp,dataClin,dataSurv,TabCoxNet,dataSubt, group1, group2, file = "case1.rda", compress = "gz")
 ```
+
 
 ## Case study n. 2: Pan Cancer downstream analysis LGG
 

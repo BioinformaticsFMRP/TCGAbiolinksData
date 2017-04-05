@@ -1,0 +1,34 @@
+Package: TCGAbiolinksData
+Title: Data for TCGAbiolinks package
+Version: 0.99.0
+Author: Antonio Colaprico,
+    Tiago Chedraoui Silva,
+    Catharina Olsen,
+    Luciano Garofano,
+    Davide Garolini,
+    Claudia Cava,
+    Thais Sabedot,
+    Tathiane Malta,
+    Stefano M. Pagnotta,
+    Isabella Castiglioni,
+    Michele Ceccarelli,
+    Gianluca Bontempi,
+    Houtan Noushmehr
+Maintainer: Antonio Colaprico <antonio.colaprico@ulb.ac.be>,
+    Tiago Chedraoui Silva <tiagochst@usp.br>
+Description:
+  This experimental data package contains 2 data sets necessary to run TCGAbiolinks and 3 data sets used
+  to create the vignette
+Depends:
+  R (>= 3.4.0)
+Imports: SummarizedExperiment
+License: GPL-3
+VignetteBuilder: knitr
+biocViews: ExperimentData, Homo_sapiens_Data, MicroarrayData, CancerData
+NeedsCompilation: no
+RoxygenNote: 6.0.1
+Suggests:
+  knitr,
+  rmarkdown,
+  pander,
+  testthat
