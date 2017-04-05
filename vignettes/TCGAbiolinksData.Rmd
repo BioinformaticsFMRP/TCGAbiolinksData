@@ -52,10 +52,10 @@ dataSubt <- TCGAquery_subtype(tumor = "BRCA")
 dataClin <- GDCquery_clinic(project = "TCGA-BRCA","clinical") 
 
 # which samples are solid tissue normal 
-group1 <- TCGAquery_SampleTypes(colnames(dataFilt), typesample = c("NT"))
+group1 <- TCGAquery_SampleTypes(colnames(brca.exp), typesample = c("NT"))
 
 # Which samples are primary solid tumor
-group2 <- TCGAquery_SampleTypes(colnames(dataFilt), typesample = c("TP"))
+group2 <- TCGAquery_SampleTypes(colnames(brca.exp), typesample = c("TP"))
 
 dataPrep <- TCGAanalyze_Preprocessing(object = brca.exp, cor.cut = 0.6)                      
 
@@ -75,8 +75,6 @@ dataDEGs <- TCGAanalyze_DEA(mat1 = dataFilt[,group1],
                             logFC.cut = 1,
                             method = "glmLRT")  
 
-
-
 dataSurv <- TCGAanalyze_SurvivalKM(clinical_patient = dataClin,
                                    dataGE = dataFilt,
                                    Genelist = rownames(dataDEGs),
@@ -95,7 +93,7 @@ TabCoxNet <- TCGAvisualize_SurvivalCoxNET(dataClin,
                                           org.Hs.string = org.Hs.string,
                                           titlePlot = "Case Study n.1 dnet")
 
-save(brca.exp,dataClin,dataSurv,TabCoxNet,dataSubt, group1, group2, file = "case1.rda", compress = "gz")
+save(brca.exp,dataClin,dataSurv,dataSubt, group1, group2, file = "case1.rda", compress = "xz")
 ```
 
 
