@@ -1,0 +1,25 @@
+---
+title: 'Data for TCGAbiolinks Package'
+author: Tiago C. Silva, Antonio Colaprico, Catharina Olsen, Fulvio D’Angelo, Gianluca
+  Bontempi Michele Ceccarelli , and Houtan Noushmehr
+date: "`r Sys.Date()`"
+output:  BiocStyle::html_document
+vignette: >
+  %\VignetteIndexEntry{'Example data for TCGA Workflow: Analyze cancer genomics and epigenomics data using Bioconductor packages'}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+# Data Introduction
+
+This package provides all necessary data to run and compile TCGAbiolinks package.
+
+# Loading the data
+
+# Data Creation
+
+
+# Session info
+```{r sessionInfo, results='asis', echo=FALSE}
+pander::pander(sessionInfo(), compact = FALSE)
+```
